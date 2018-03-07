@@ -98,8 +98,5 @@ public class Fog {
 	{
 		return "Fog capacities:  " + this.fog.toString() + " " + this.cpu.toString() +" " + this.memory.toString();
 	}
-	private void processRequest() {
-		// TODO Auto-generated method stub
-		
-	}
+	
 }

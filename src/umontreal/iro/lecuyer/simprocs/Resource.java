@@ -514,12 +514,12 @@ public class Resource  {
 		    	   if (save.contain(record.id)){
 		    		   for(int i=0; i < save.getSize(); i++){
 	    				   if (id.equals(save.getID(i))){
-	    					   if (save.getReal(i) == 0) // If that val is 0, update otherwise leave it
+	    					   if (save.getReal(i) == 0) 
 	    						   save.setReal(i, Sim.time() + executionTime -arrTime);
 		    			   }
 	    			   }
 		    	   }
-		    	   else{ // Real came first before dummy, give them same times
+		    	   else{ 
 	    			   time = Sim.time() + executionTime - arrTime;
 					   save.update(id, time, 0);
 	    		   }
@@ -555,7 +555,7 @@ public class Resource  {
 	               		{
 	               			remoteWaitingList.addFirst(record); 
 	               		}
-	//            	   waitingList.addFirst (record); break;
+
 	               default   : throw new IllegalStateException(
 	                                               "policy must be FIFO or LIFO");
 	           }
