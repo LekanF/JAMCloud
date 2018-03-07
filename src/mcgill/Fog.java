@@ -10,7 +10,7 @@ public class Fog {
 	Double longitude, latitude, cpu, memory;
 	Fog fog;
 	Resource jresource;
-	Util.UtilizationMap utilise; //= new Util.UtilizationMap();
+	Util.UtilizationMap utilise; 
 	Util.SaveRealDummy dummyVals = new Util.SaveRealDummy();
 	List<Double> util_values;
 	
@@ -22,7 +22,7 @@ public class Fog {
 	
 	public void fail(){
 		this.fog = null;
-//		System.out.println("Fog has failed");
+
 	}
 	public void setId(int id) {
 		this.id = id;
@@ -67,14 +67,12 @@ public class Fog {
 		this.fog = f;
 		this.cpu = c;
 		this.memory = mem;
-//		jresource = new Resource((Integer)mem.intValue(), ID.toString());
-//		jresource = new Resource(1, ID.toString());
-//		jresource = new Resource(this.cpu.intValue(), ID.toString(), dummyVals);
+
 		jresource = new Resource(this.cpu.intValue(), ID.toString()); // Use this - Its the Real one
-//		jresource.setAlpha(0.1);
+
 		utilise = new Util.UtilizationMap();
 		util_values = new ArrayList<Double>();
-//		dummyVals = new Util.SaveRealDummy();
+
 	}
 	
 	public void incrementNumOff(){
@@ -89,12 +87,7 @@ public class Fog {
 		return this.cpu.intValue();
 		
 	}
-//	public void acceptRequest(Device r){
-//		r = new Device();
-//		if (r.getZone_id().equals(zone_id)){
-//			processRequest();
-//		}
-//	}
+
 	
 	public String toString()
 	{
