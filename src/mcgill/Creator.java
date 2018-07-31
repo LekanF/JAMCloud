@@ -41,6 +41,8 @@ public class Creator  extends JFrame {
 	static List<Fog> googleFogs = new ArrayList<Fog>(); // Fogs with location Data and google capacities.
 	static List<Fog> clouds = new ArrayList<Fog>(); // Cloud with no google capacity (no '.fog' needed)
 	static List<Fog> cloudNodes = new ArrayList<Fog>(); // Cloud with no google capacity ('.fog' needed)
+	
+	static List<Fog> remFogs = new ArrayList<Fog>(); // the remaining fogs that we want to convert to devices for allocation optimizer 
 		
 	//Here, not really necessary, trying to get the rectangles
 	public Creator(){
@@ -128,14 +130,14 @@ public class Creator  extends JFrame {
 			
 			//Here we write to file, not really necessarily but it is for bigger files.
 			//Dont use myMap because of memnory constraints going forward.
-			for (int i = 0; i < myMap.getSize(); i ++){		
-				
-				bufferedWriter.write(myMap.getId(i) + " " + myMap.getLong(i) + " " + myMap.getLat(i));
-				
-				bufferedWriter.write("\n");
-			}
-			bufferedWriter.flush();
-			bufferedWriter.close();
+//			for (int i = 0; i < myMap.getSize(); i ++){		
+//				
+//				bufferedWriter.write(myMap.getId(i) + " " + myMap.getLong(i) + " " + myMap.getLat(i));
+//				
+//				bufferedWriter.write("\n");
+//			}
+//			bufferedWriter.flush();
+//			bufferedWriter.close();
 
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
@@ -197,7 +199,7 @@ public class Creator  extends JFrame {
 			outDegree = 0; inDegree = 0;
 
 		}
-		int co = 1;
+		int co = 1; int id = 1;
 		//How many nodes has how many edges e.g 21 nodes have 1 edge connection. 1 -21, 2 - 96, 3 - 46, 4 - 16, 5 - 4, 6 -1, 7,8  - 1. total is 196 nodes
 		for (Entry<Integer, Integer> entry: nodeDegree.entrySet()){
 			// Checks if the node has more than 4 connections, make it a fog
@@ -207,11 +209,15 @@ public class Creator  extends JFrame {
 				co++;
 				for (int i = 0; i < myMap.getSize(); i++){
 					if(entry.getKey() == myMap.getId(i)){//assign fogs to nodes which have more than 4 node degrees
-						Fog tempFog = new Fog(myMap.getId(i), myMap.getLat(i), myMap.getLong(i));
+//						Fog tempFog = new Fog(myMap.getId(i), myMap.getLat(i), myMap.getLong(i));
+						Fog tempFog = new Fog(id++, myMap.getLat(i), myMap.getLong(i));
 						fogs.add(tempFog);
 					}
+					
+					
 				}
 			}
+			
 			if (entry.getValue() >= 6){
 				for (int j = 0; j < myMap.getSize(); j++){
 					if (entry.getKey() == myMap.getId(j)){ // Assign clouds to nodes which have 3 node degrees
@@ -222,6 +228,11 @@ public class Creator  extends JFrame {
 			}
 		}
 		
+		for (int i = 0; i < myMap.getSize(); i++){
+			Fog tempFog = new Fog(myMap.getId(i), myMap.getLat(i), myMap.getLong(i));
+			remFogs.add(tempFog);
+		}
+		
 		for (int c = 0; c < clouds.size(); c++){
 			Fog cloudNode = new Fog (clouds.get(c).getId(), clouds.get(c), 100.0, 100.0);
 			cloudNodes.add(cloudNode);
@@ -230,36 +241,52 @@ public class Creator  extends JFrame {
 		Util.Compress Mcapacity = new Util.Compress();
 		Util.Latency latent = new Util.Latency();
 		
-		Mcapacity.fileSorter("machine_events.csv", "machine_output1.txt", 3);
-
-		List<Float> machineCPU = new ArrayList<Float>();
-		List<Float> machineMem = new ArrayList<Float>();
-		float total = 0; float totalMem = 0;
-		int counter = 0;
-		
-		// This aggregates the CPUs
-		for(int i = 0; i < 700; i++ ){ //500/20 gives 25 Fogs
-			total += Mcapacity.machine.getCPU(i);
-			totalMem += Mcapacity.machine.getMemory(i);
-			counter++;
-			
-			if(counter == 10){
-				machineCPU.add(total);
-				machineMem.add(totalMem);
-				total = 0;
-				counter = 0;
-			}
-		}
+		// It seems too much reading and writing to files is slowing down the computation
+//		Mcapacity.fileSorter("machine_events.csv", "machine_output1.txt", 3);
+//
+//		List<Float> machineCPU = new ArrayList<Float>();
+//		List<Float> machineMem = new ArrayList<Float>();
+//		float total = 0; float totalMem = 0;
+//		int counter = 0;
+//		
+//		// This aggregates the CPUs
+//		for(int i = 0; i < 700; i++ ){ //500/20 gives 25 Fogs
+//			total += Mcapacity.machine.getCPU(i);
+//			totalMem += Mcapacity.machine.getMemory(i);
+//			counter++;
+//			
+//			if(counter == 10){
+//				machineCPU.add(total);
+//				machineMem.add(totalMem);
+//				total = 0;
+//				counter = 0;
+//			}
+//		}
 	
 		
 		for(int i = 0; i < fogs.size();i++){ //  Adds data from google to cogent nodes, only 23
 
-			Fog capacitatedFog = new Fog(fogs.get(i).getId(), fogs.get(i), machineCPU.get(i), machineMem.get(i) );
+//			Fog capacitatedFog = new Fog(fogs.get(i).getId(), fogs.get(i), machineCPU.get(i), machineMem.get(i) );
+			Fog capacitatedFog = new Fog(fogs.get(i).getId(), fogs.get(i), 10, 10 );
+			
+			//we are using ids from 1-20 instead of cogent ids to accomodate alloc optimizer
+//			Fog capacitatedFog = new Fog(id++, fogs.get(i), 10, 10 );
+
 				googleFogs.add(capacitatedFog);                                             
 		}		
 	}
 	
+	public static boolean Contains(List<Fog>fogs, Fog f) {
+		for (Fog fog : fogs) {
+			if(f.equals(fog.fog)) // We use fog.fog because of googlefogs/fogN in calling method
+				return true;
+			else
+				return false;
+		}
+		return false;
+	}
 	
+//	public static List<Fog> 
 	
 	public static List<Device> createDevicesForFogs() throws FileNotFoundException, IOException{
 		getNodeEdge();
@@ -273,7 +300,7 @@ public class Creator  extends JFrame {
 			Integer numDev = i+5;
 			for (Integer k = 0; k < numDev; k++){
 //			for (Integer k = 0; k < 2; k++){ // Used for testing purposes
-				String id = googleFogs.get(i).fog.getId().toString() + i.toString();
+				String id = googleFogs.get(i).fog.getId().toString() + k.toString();
 				// Here we are creating devices around a fog and giving it latency to that particular fog
 				Device myDevice = new Device(Integer.parseInt(id), googleFogs.get(i).fog.getLongitude(), googleFogs.get(i).fog.getLatitude(), calEdgeLatencies());
 //				myDevice.insertLatency(calEdgeLatencies() + Latency.DFLatency(myDevice, fog));
@@ -283,6 +310,33 @@ public class Creator  extends JFrame {
 		
 		return allDevices;
 	}
+	
+	public static List<Device> createNewDevicesFromFile() throws FileNotFoundException, IOException{
+		
+		getNodeEdge();
+		List<Device> newDevices = new ArrayList<Device>();
+		
+		try(BufferedReader reader = new BufferedReader(new FileReader("newDevices.txt"))){
+			String curLine;
+			String[] splits;
+			
+			int id = 1; double lng, lat;
+			while ((curLine = reader.readLine()) != null) {
+				curLine.trim();
+				splits = curLine.split(" ");
+//				id = Integer.parseInt(splits[0]);
+				lng = Double.parseDouble(splits[1]);
+				lat = Double.parseDouble(splits[2]);
+				
+				// we are using id from 1 - 166 instead of cogent ids so as to accomodate allocation optimizer ids
+				Device myDevice = new Device(id++, lng, lat, calEdgeLatencies());
+
+				newDevices.add(myDevice);
+			}
+		}
+		return newDevices;
+	}
+	
 	static LinkedList<Double> waitList;
 	static LinkedList<Double> servList;
 

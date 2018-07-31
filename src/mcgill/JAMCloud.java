@@ -1,7 +1,9 @@
 package mcgill;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -33,12 +35,12 @@ public class JAMCloud {
  static List<Fog> fogN;
  static List<Fog> CLOUD;
 	static List<Device> devices;
-	static int totalNumberOfRequests = 2000; // Total number of tasks to simulate.
-	static int WARMUP = 100; // Number of tasks for warmup
+	static int totalNumberOfRequests = 100; // Total number of tasks to simulate.
+	static int WARMUP = 10; // Number of tasks for warmup
 	int nbTasks; // Number of tasks ended so far;
 	static DecimalFormat df = new DecimalFormat("#0.0000000");
 	
-	static int failPoint = 500, bringBackPoint = 800;
+	static int failPoint = 50, bringBackPoint = 80;
 	
 	static List<Integer> capacityValues ;
 	
@@ -99,7 +101,8 @@ public class JAMCloud {
 	public JAMCloud(int choice) throws FileNotFoundException, IOException{
 			
 		// Creates devices first from previous work but note that getNodeEdge was needed to create fogs
-			devices = Creator.createDevicesForFogs();
+//			devices = Creator.createDevicesForFogs();  //old declaration where devices have same location info as fogs
+			devices = Creator.createNewDevicesFromFile();
 			// Creates the fogs
 			fogN = Creator.googleFogs;
 			CLOUD = Creator.cloudNodes;
@@ -387,7 +390,7 @@ public class JAMCloud {
 
 			}
 			
-			public void actions(){
+			public void actions() {
 				double arriveTime;
 				double serviceTime;
 
@@ -426,8 +429,26 @@ public class JAMCloud {
 						}
 						
 						// send to homeFog
-						Fog homecwfog = selectHomeFog(dev,fogN);
-						List<Fog> poolw = poolFogs(dev, homecwfog,fogN, 3);
+//						Fog homecwfog = selectHomeFog(dev,fogN);
+//						List<Fog> poolw = poolFogs(dev, homecwfog,fogN, 3);
+						
+						List<Fog> selectedFogsw = null;
+						try {
+							selectedFogsw = selectHomeAndPoolFogs(dev, fogN);
+//							homecfog = selectHomeAndPoolFogs(dev, fogN);
+						} catch (FileNotFoundException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+												
+						Fog homecwfog = selectedFogsw.get(0); 
+						Fog pool1w = selectedFogsw.get(1); 
+						
+						List<Fog>poolw = new ArrayList<Fog>();
+						poolw.add(pool1w);
 						
 						homeLat = performTask(idcW, LOCAL, REAL, serviceTime, arriveTime, homecwfog, homecwfog);
 
@@ -510,10 +531,28 @@ public class JAMCloud {
 						if (idc == null){
 							idc = getTaskID();
 						}
-						
+//						Fog homecfog = null;
 						// send to home fog
-						Fog homecfog = selectHomeFog(dev,fogN);
-						List<Fog> pool = poolFogs(dev, homecfog,fogN, 3);
+//						Fog homecfog = selectHomeFog(dev,fogN);
+//						List<Fog> pool = poolFogs(dev, homecfog,fogN, 3);
+						
+						List<Fog> selectedFogs = null;
+						try {
+							selectedFogs = selectHomeAndPoolFogs(dev, fogN);
+//							homecfog = selectHomeAndPoolFogs(dev, fogN);
+						} catch (FileNotFoundException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+												
+						Fog homecfog = selectedFogs.get(0); 
+						Fog pool1 = selectedFogs.get(1); 
+						
+						List<Fog>pool = new ArrayList<Fog>();
+						pool.add(pool1);
 						
 						homeLat = performTask(idc, LOCAL, REAL, serviceTime, arriveTime, homecfog, homecfog);
 //						homeCount++;
@@ -680,7 +719,22 @@ public class JAMCloud {
 					case HOMEFOG:
 						
 						
-						Fog hFog = selectHomeFog(dev, fogN);
+//						Fog hFog = selectHomeFog(dev, fogN);
+						List<Fog> selectedFog = null;
+						try {
+							selectedFog = selectHomeAndPoolFogs(dev, fogN);
+//							homecfog = selectHomeAndPoolFogs(dev, fogN);
+						} catch (FileNotFoundException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+												
+						Fog hFog = selectedFog.get(0); 
+						
+						
 						responseTime = performTask(hFog, serviceTime, arriveTime, hFog);
 						
 						nbTasks++;
@@ -742,9 +796,28 @@ public class JAMCloud {
 
 						// Send to home fog 
 						
-						Fog homevfog = selectHomeFog(dev, fogN);
+//						Fog homevfog = selectHomeFog(dev, fogN);
 
-						List<Fog> tempPool = poolFogs(dev, homevfog, fogN, 3);
+//						List<Fog> tempPool = poolFogs(dev, homevfog, fogN, 3);
+						
+						List<Fog> selectedvFogs = null;
+						try {
+							selectedvFogs = selectHomeAndPoolFogs(dev, fogN);
+//							homecfog = selectHomeAndPoolFogs(dev, fogN);
+						} catch (FileNotFoundException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+												
+						Fog homevfog = selectedvFogs.get(0); 
+						Fog vpool = selectedvFogs.get(1); 
+						
+						List<Fog>tempPool = new ArrayList<Fog>();
+						tempPool.add(vpool);
+						
 						// Send to homefog if waiting time is less than threshold
 						if (homevfog == null){
 							homefoglat = 1000000.0;
@@ -1094,6 +1167,136 @@ public class JAMCloud {
 			 
 			 homefog = myHomeFog.get(0);
 			 return homefog;
+		 }
+		 
+ private static List<Fog> selectHomeAndPoolFogs(Device dev, List<Fog> allFogs) throws FileNotFoundException, IOException {
+			 
+			 List<Fog> fogs = new ArrayList<Fog>();
+			 Fog homeFog = null, pool = null;
+			 try(BufferedReader reader = new BufferedReader(new FileReader("ATwo.txt"))){
+					String curLine;
+					String[] splits;
+					
+					Integer devID, fogID, poolID; 
+					while ((curLine = reader.readLine()) != null) {
+						curLine.trim();
+						splits = curLine.split(" ");
+						devID = Integer.parseInt(splits[0]);
+						fogID = Integer.parseInt(splits[1]);
+						poolID = Integer.parseInt(splits[2]);
+						
+						if (dev.getDeviceID().equals(devID)) {
+							for (Fog f : allFogs) {
+								if (fogID.equals(f.fog.getId())) {
+									homeFog = f;									
+								}
+								
+								if (poolID.equals(f.fog.getId())) {
+									pool = f;									
+								}
+							}
+						}
+						
+					
+					}
+					fogs.add(homeFog);
+					fogs.add(pool);
+					
+				}
+			 return fogs ;
+		}
+		 
+ // Using the allocation output of the q-coverage by choosing the appropriate homefog and pool, noticed that a lot of requests were getting dropped
+		 private static List<Fog> selectHomeAndPoolFogs2(Device dev, List<Fog> allFogs) throws FileNotFoundException, IOException {
+			 
+			 List<Fog> fogs = new ArrayList<Fog>();
+			 Fog homeFog = null, pool = null;
+//			 try(BufferedReader reader = new BufferedReader(new FileReader("ADevice.txt"))){
+//					String curLine;
+//					String[] splits;
+//					
+//					Integer devID, fogID, poolID; 
+//					while ((curLine = reader.readLine()) != null) {
+//						curLine.trim();
+//						splits = curLine.split(" ");
+//						devID = Integer.parseInt(splits[0]);
+//						fogID = Integer.parseInt(splits[1]);
+//						poolID = Integer.parseInt(splits[2]);
+//						
+//						if (dev.getDeviceID().equals(devID)) {
+//							for (Fog f : allFogs) {
+//								if (fogID.equals(f.fog.getId())) {
+//									homeFog = f;									
+//								}
+//								
+//								if (poolID.equals(f.fog.getId())) {
+//									pool = f;									
+//								}
+//							}
+//						}
+//						
+//					
+//					}
+//					fogs.add(homeFog);
+//					fogs.add(pool);
+//					
+//				}
+			 
+			 try(BufferedReader reader = new BufferedReader(new FileReader("AOne.txt"))){
+					String curLine;
+					String[] splits;
+					
+					Integer devID, fogID, poolID; 
+					while ((curLine = reader.readLine()) != null) {
+						curLine.trim();
+						splits = curLine.split(" ");
+						devID = Integer.parseInt(splits[0]);
+						fogID = Integer.parseInt(splits[1]);
+						
+						if (dev.getDeviceID().equals(devID)) {
+							for (Fog f : allFogs) {
+								if (fogID.equals(f.fog.getId())) {
+									homeFog = f;									
+								}
+							}
+						}
+
+					}
+					fogs.add(homeFog);
+					
+				}
+			 
+			 try(BufferedReader reader = new BufferedReader(new FileReader("ATwo.txt"))){
+					String curLine;
+					String[] splits;
+					
+					Integer devID, fogID, poolID; 
+					while ((curLine = reader.readLine()) != null) {
+						curLine.trim();
+						splits = curLine.split(" ");
+						devID = Integer.parseInt(splits[0]);
+						fogID = Integer.parseInt(splits[1]);
+						poolID = Integer.parseInt(splits[2]);
+						
+						// If our initial homefog is equal to the poolID, make the first occurence the pool otherwise make the poolID the pool fog
+						if(homeFog.fog.getId().equals(poolID)) {
+							for (Fog f : allFogs) {
+								if (fogID.equals(f.fog.getId())) {
+									pool = f;									
+								}
+							}
+						}
+						else {
+							for (Fog f : allFogs) {
+								if (poolID.equals(f.fog.getId())) {
+									pool= f;									
+								}
+							}
+						}					
+					}					
+					fogs.add(pool);					
+				}
+			 return fogs;
 		 }
 		private void simulOneRun() {
 		   SimProcess.init();
@@ -1520,8 +1723,67 @@ public class JAMCloud {
 			 System.out.println("Cloud % : " + df.format(JAMCloud.percentCloud));
 
 		 System.out.println ("Total CPU time: " + timer.format() + "Algorithm : " + OPTION);
-
+		 
+		
 	 }
+	 
+		 /*
+	 // second main to get fog and devices details for allocation model
+	 public static void main (String[] args) throws IOException{
+		// Get the devices and long and lat
+		devices = Creator.createNewDevicesFromFile();
+		// Creates the fogs
+		fogN = Creator.googleFogs;
+		List<Fog>allFogs = Creator.remFogs;
+		
+		int i = 1, j = 1;
+		BufferedWriter bufferedWriter, b;
+		
+		System.out.println("Fog Info");
+		for(Fog f : fogN) {
+			System.out.println( f.fog.getId() + "  " + f.fog.getLongitude() + "  " + f.fog.getLatitude());	
+		}
+		
+		System.out.println("Device Info");
+		for(Device d : devices)		{
+			System.out.println(d.getDeviceID() + " " + d.getDeviceLongitude() + " " + d.getDeviceLatitude());
+		}
+		
+//		 Write devices info to a devices.txt
+//		try(FileWriter fw = new FileWriter("nDevices.txt", false)){
+//			bufferedWriter = new BufferedWriter(fw);
+//						
+//			// not working still
+//			for (Fog f : allFogs) {
+//				if (!Creator.Contains(fogN, f)) {
+//					bufferedWriter.write(f.getId() + " " + f.getLongitude() + " " + f.getLatitude()); 
+//					bufferedWriter.write("\n");
+//					System.out.println(j++ + ": Dev ID : " + f.getId() + " Dev Long : " + f.getLongitude() + " Dev Lat : " + f.getLatitude());						
+//				}
+//			}
+//			
+//			
+//			bufferedWriter.flush();
+//			bufferedWriter.close();
+//		}
+		
+//		try(FileWriter fw = new FileWriter("fogs.txt", false)){
+//			b = new BufferedWriter(fw);
+//			
+//			for (Fog f : fogN) {
+//				b.write(f.fog.getId() + " " + f.fog.getLongitude() + " " + f.fog.getLatitude()); 
+//				b.write("\n");
+//				System.out.println(j++ + ": Fog ID : " + f.fog.getId() + " Fog Long : " + f.fog.getLongitude() + " Fog Lat : " + f.fog.getLatitude());	
+//				
+//			}
+//			
+//			b.flush();
+//			b.close();
+//		}	
+		// Lets split the original fogs into googleFogs and the rest devices
+		
+	 }
+	 */
 	 
 	 class Link{
 		 Fog source;
