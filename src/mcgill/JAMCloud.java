@@ -56,6 +56,7 @@ public class JAMCloud {
 	public static final int MINDELAY = 5;
 	public static final int VFOG = 6;
 	public static final int WITHOUT_CLOUD_MINDELAY = 7;
+	public static final int CLOSER = 10;
 	
 	public static final int VFR = 8;
 	public static final int IMPRPOOL = 9;
@@ -245,7 +246,7 @@ public class JAMCloud {
 				 return Math.min(Math.min(a, b), c);
 			 }
 			 
-			 public List<Fog> APPPO2 (List<Fog> Fogs){
+			 public static List<Fog> APPPO2 (List<Fog> Fogs){
 				 
 				 List<Fog> po2 = new ArrayList<Fog>();
 
@@ -419,6 +420,79 @@ public class JAMCloud {
 					
 					// Implementation of the algorithms
 					switch (choice){
+					
+					case CLOSER: // The initial VFR algorithm without routing requests to the cloud where the closest fog is selected
+	
+						
+						String id_closer = null;
+						if (id_closer == null){
+							id_closer = getTaskID();
+						}
+						
+						// send to homeFog
+						Fog homecloserfog = selectHomeFog(dev,fogN);
+						List<Fog> pool_closer = poolFogs(dev, homecloserfog,fogN, 3);
+						
+						homeLat = performTask(id_closer, LOCAL, REAL, serviceTime, arriveTime, homecloserfog, homecloserfog);
+
+						// send to pool
+						if (homeLat > tPoolDelay){
+//							poolCount++; //pool_only++;
+							if (tFog == null){
+								for (Fog p : pool_closer){
+									poolLat = performTask(id_closer, REMOTE, REAL, serviceTime, arriveTime, homecloserfog, p);//poolCount++;
+									if (poolLat < min){
+										minimum = poolLat;
+										tFog = p;
+									}
+									poolLat = minimum;
+								}
+								
+							}
+							else{
+								poolLat = performTask(id_closer, REMOTE, REAL, serviceTime, arriveTime, homecloserfog, tFog);//poolCount++;
+							}
+							probe_pool++;
+							tPoolDelay = Math.abs(poolLat - homeLat) * Math.pow(probe_pool, ORDER); 
+							
+							if (homeLat < poolLat){
+								fog_only++; homeCount++;
+								if (nbTasks > WARMUP){
+									home_response.add(homeLat);
+	//								taskStatsSojourn.add(homeLat); 
+									appResponseTime.add(homeLat);
+									meanResponse.add(homeLat);
+									responseNumbers.add(homeLat);
+								}
+							}
+							else{
+								pool_only++; poolCount++;
+								if (nbTasks > WARMUP){
+									pool_response.add(poolLat); 
+	//								taskStatsSojourn.add(poolLat); 
+									appResponseTime.add(poolLat);
+									meanResponse.add(poolLat);
+									responseNumbers.add(poolLat);
+								}
+							}
+								
+						}
+						// Here means if we did not probe the pool, then the homeFog was good
+						else{
+							tPoolDelay *= decay;
+							homeCount++; fog_only++; 
+							if (nbTasks > WARMUP){
+								home_response.add(homeLat);
+								appResponseTime.add(homeLat);
+								meanResponse.add(homeLat);
+								responseNumbers.add(homeLat);
+							}
+						}
+						
+						
+						
+						nbTasks++;
+						break;
 					
 					case VFOG: // The VFR algorithm without routing requests to the cloud
 	
@@ -719,20 +793,20 @@ public class JAMCloud {
 					case HOMEFOG:
 						
 						
-//						Fog hFog = selectHomeFog(dev, fogN);
-						List<Fog> selectedFog = null;
-						try {
-							selectedFog = selectHomeAndPoolFogs(dev, fogN);
-//							homecfog = selectHomeAndPoolFogs(dev, fogN);
-						} catch (FileNotFoundException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-												
-						Fog hFog = selectedFog.get(0); 
+						Fog hFog = selectHomeFog(dev, fogN);
+//						List<Fog> selectedFog = null;
+//						try {
+//							selectedFog = selectHomeAndPoolFogs(dev, fogN);
+////							homecfog = selectHomeAndPoolFogs(dev, fogN);
+//						} catch (FileNotFoundException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						} catch (IOException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						}
+//												
+//						Fog hFog = selectedFog.get(0); 
 						
 						
 						responseTime = performTask(hFog, serviceTime, arriveTime, hFog);
@@ -785,6 +859,7 @@ public class JAMCloud {
 						 }
 						 nbTasks++;
 						break;
+						
 						
 					case VFR : // Our proposed algorithm. Includes sending request to the cloud if vFog is bbehaving badly
 						
@@ -1146,7 +1221,7 @@ public class JAMCloud {
 		 }
 		 
 		 // Selects homefog in order of latencies in case of failure
-		 private static Fog selectHomeFog(Device dev, List<Fog> allFogs){
+		 public static Fog selectHomeFog(Device dev, List<Fog> allFogs){
 			 double latency = 0;
 			 
 			 
@@ -1679,6 +1754,34 @@ public class JAMCloud {
 			 return myPool3;		
 		 }
 		
+		public static List<Fog> poolFogs(Device dev, Fog homefog, List<Fog> fog, int choice, List<Link> fogLinks){
+			// return the 3 closest fogs
+			 List<Fog> myPool3;// = new ArrayList<Fog>();
+			 double latency = 0;
+			 HashMap<Fog, Double> myFogMap = new HashMap<Fog, Double>();
+			 
+			 //Lets randomly pick 3 fogs
+			 for (Fog g : fog){
+				 
+				 for (Link link : fogLinks){
+					 	if (homefog.equals(link.getSource()) && g.equals(link.getDestination()) || homefog.equals(link.getDestination()) && g.equals(link.getSource())){
+						latency = dev.getDevLatatency() + link.FogLatency();
+//						System.out.println("Im here in poolFogs " );
+						 myFogMap.put(g, latency);						
+					 }
+				 }
+			 }
+			 
+			 // For ascending order of latencies
+			 Stream<Map.Entry<Fog, Double>> sorted = myFogMap.entrySet().stream().sorted(Map.Entry.comparingByValue());		 
+			 // To take the top 3 fogs for a pool
+			 Map<Fog, Double> top3 = myFogMap.entrySet().stream().sorted(Map.Entry.comparingByValue()).limit(choice).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)); 
+			 
+			 myPool3 = new ArrayList<>(top3.keySet());
+	
+			 return myPool3;		
+		 }
+		
 	 public static List<Fog> PO2 (List<Fog> Fogs){
 			 
 			 List<Fog> po2 = new ArrayList<Fog>();
@@ -1785,7 +1888,7 @@ public class JAMCloud {
 	 }
 	 */
 	 
-	 class Link{
+	 static class Link{
 		 Fog source;
 		 Fog destination;
 		 double total_mb_used;
